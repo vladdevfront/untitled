@@ -1,0 +1,21 @@
+services:
+  backend:
+    build:
+      context: backend
+      dockerfile: Dockerfile
+    depends_on:
+      - db
+    environment:
+      DB_HOST: host.docker.internal
+      DB_USER: postgres
+      DB_PASSWORD: 228325602
+      DB_PORT: 5432
+      DB_NAME: attendance_system
+
+  db:
+    image: postgres:17
+    container_name: my-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 228325602
+      POSTGRES_DB: attendance_system

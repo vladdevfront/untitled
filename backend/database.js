@@ -4,12 +4,13 @@ const { Pool } = pg;
 
 // Настройки подключения
 const pool = new Pool({
-    user: 'postgres',          // Имя пользователя PostgreSQL
-    host: 'localhost',         // Адрес сервера базы данных
-    database: 'attendance_system', // Имя базы данных
-    password: '228325602',     // Пароль пользователя
-    port: 5432,                // Порт PostgreSQL (по умолчанию 5432)
+    host: process.env.DB_HOST,
+    port: Number(process.env.DB_PORT),
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
 });
+
 
 // Экспортируем объект для выполнения запросов
 export default {
