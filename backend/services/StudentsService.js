@@ -34,3 +34,17 @@ export const deleteAllStudents = async (cvikyId) => {
     await db.query(query, [cvikyId]);
 };
 
+export const updatedStudents = async (cvikyId) => {
+    const query = "SELECT * FROM studenty WHERE cviky_id = $1;";
+    try {
+        const result = await db.query(query, [cvikyId]);
+        return result.rows; // Возвращаем массив строк из результата
+    } catch (error) {
+        console.error("Ошибка выполнения запроса:", error.message);
+        throw error; // Пробрасываем ошибку для обработки в вызывающем коде
+    }
+};
+
+
+
+

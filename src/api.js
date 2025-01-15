@@ -27,10 +27,33 @@ export const addStudentToCviky = async ({ isic, first_name, last_name, cviky_id 
         cviky_id,
     });
 };
+export const addPair = async (cvikyData) => {
+    return await axios.post("http://localhost:3000/cviky", cvikyData);
+};
 
 
-// Обновить присутствие
 export const updateStudentPresence = async (id, present) => {
     const response = await axios.put(`${API_URL}/students/${id}`, { present });
     return response.data;
 };
+
+export const deletePair = async (id) => {
+    return await axios.delete(`${API_URL}/cviky/${id}`);
+};
+
+export const deleteAllStudents = async (cvikyId) => {
+    return await axios.delete(`${API_URL}/students/cviky/${cvikyId}`);
+};
+
+export const deleteStudent = async (id) => {
+    return await axios.delete(`${API_URL}/students/${id}`);
+};
+
+export const findByUserByLogin = async (login, password, role_server) => {
+    const response = await axios.post(`${API_URL}/login`, { login, password, role_server });
+    return response.data;
+}
+
+export const updateUserByCvikId = async (cvikyId) => {
+    return await axios.get(`${API_URL}/students/cviky/${cvikyId}`);
+}

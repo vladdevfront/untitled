@@ -5,13 +5,23 @@ import {
     addStudent,
     deleteStudent,
     updateStudentPresence,
-    deleteAllStudents,
+    deleteAllStudents, updatedStudents,
 } from './services/StudentsService.js';
 import cors from "cors";
+import bodyParser from 'body-parser';
+import { findUserByLogin, verifyPassword } from './services/UserService.js';
+
 
 const app = express();
 app.use(express.json());
-app.use(cors());
+const corsOptions = {
+    origin: 'http://localhost:5173', // Разрешить запросы с любых источников
+    methods: ['GET', 'POST', 'PUT', 'DELETE'], // Разрешённые методы
+    allowedHeaders: ['Content-Type'], // Разрешённые заголовки
+};
+app.options('/students/status/stream', cors({ origin: '*' }));
+app.use(cors(corsOptions));
+app.use(bodyParser.json());
 
 const PORT = 3000;
 
@@ -124,7 +134,7 @@ app.put('/students/:id', async (req, res) => {
     }
 });
 
-app.delete("/students/by-cviky/:cvikyId", async (req, res) => {
+app.delete("/students/cviky/:cvikyId", async (req, res) => {
     const { cvikyId } = req.params;
 
     try {
@@ -135,3 +145,42 @@ app.delete("/students/by-cviky/:cvikyId", async (req, res) => {
         res.status(500).send("Ошибка сервера");
     }
 });
+
+app.post('/login', async (req, res) => {
+    const { login, password } = req.body;
+    console.log('Тело запроса:', req.body);
+    try {
+        const user = await findUserByLogin(login);
+
+        if (!user) {
+            return res.status(404).json({ message: 'Pouzivatel neexistuje' });
+        }
+
+        const isPasswordCorrect = await verifyPassword(password, user.password_hash);
+
+        if (!isPasswordCorrect) {
+            return res.status(401).json({ message: 'Nespravne heslo' });
+        }
+
+        res.status(200).json({ message: 'Vitajte!', user: { login: user.login, role: user.role_server } });
+    } catch (error) {
+        console.error('Nespravny login:', error.message);
+        res.status(500).json({ message: 'Chyba servera' });
+    }
+});
+
+app.get('/students/cviky/:cvikyId', async (req, res) => {
+    const { cvikyId } = req.params;
+    try {
+        const students = await updatedStudents(cvikyId);
+        res.status(200).json(students);
+    } catch (error) {
+        console.error('Ошибка получения студентов для пары:', error.message);
+        res.status(500).send('Ошибка сервера');
+    }
+});
+
+
+
+
+

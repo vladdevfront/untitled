@@ -1,6 +1,8 @@
 import React from "react";
+import PropTypes from "prop-types";
 
 const StudentSettings = ({ student, onClose, onDelete, onTogglePresence }) => {
+    
     if (!student) return null;
 
     return (
@@ -29,7 +31,6 @@ const StudentSettings = ({ student, onClose, onDelete, onTogglePresence }) => {
                     position: "relative",
                 }}
             >
-                {/* Кнопка закрытия модального окна */}
                 <button
                     onClick={onClose}
                     style={{
@@ -45,24 +46,12 @@ const StudentSettings = ({ student, onClose, onDelete, onTogglePresence }) => {
                     ✕
                 </button>
 
-                {/* Информация о студенте */}
-                <h2
-                    style={{
-                        fontFamily: "Montserrat, sans-serif",
-                        fontWeight: 500,
-                        marginBottom: "32px",
-                    }}
-                >
-                    Nastavenia pre: {student.name}
-                </h2>
+                <h2>Nastavenia pre: {student.name}</h2>
                 <p>
-                    <strong>ISIC čislo:</strong> {student.id}
-                </p>
-                <p>
-                    <strong>Absencie:</strong> {student.absences || 0}
+                    <strong>ISIC čislo:</strong> {student.isic}
                 </p>
 
-                {/* Выпадающий список для выбора статуса */}
+                {/* Выпадающий список для изменения присутствия */}
                 <div style={{ marginTop: "24px" }}>
                     <label style={{ marginBottom: "8px", display: "block", fontWeight: "bold" }}>
                         Status:
@@ -86,9 +75,12 @@ const StudentSettings = ({ student, onClose, onDelete, onTogglePresence }) => {
                 </div>
 
                 {/* Кнопка удаления */}
-                <div style={{ marginTop: "24px", marginLeft: "auto", display: "flex", justifyContent: "flex-end" }}>
+                <div style={{marginTop: "24px", textAlign: "right"}}>
                     <button
-                        onClick={() => onDelete(student.id)}
+                        onClick={() => {
+                            onDelete(student.id);
+                            onClose(); // Закрытие окна после удаления
+                        }}
                         style={{
                             padding: "8px 16px",
                             backgroundColor: "#f44336",
@@ -100,10 +92,23 @@ const StudentSettings = ({ student, onClose, onDelete, onTogglePresence }) => {
                     >
                         Odstrániť zo zoznamu
                     </button>
+
                 </div>
             </div>
         </div>
     );
+};
+
+StudentSettings.propTypes = {
+    student: PropTypes.shape({
+        id: PropTypes.number.isRequired,
+        isic: PropTypes.string.isRequired,
+        name: PropTypes.string.isRequired,
+        present: PropTypes.bool.isRequired,
+    }).isRequired,
+    onClose: PropTypes.func.isRequired,
+    onDelete: PropTypes.func.isRequired,
+    onTogglePresence: PropTypes.func.isRequired,
 };
 
 export default StudentSettings;
