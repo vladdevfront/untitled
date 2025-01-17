@@ -45,6 +45,44 @@ export const updatedStudents = async (cvikyId) => {
     }
 };
 
+export const getAttendanceByStudentId = async (studentId) => {
+    try {
+        console.log('Параметр student_id для SQL-запроса:', studentId); // Логируем параметр
+        const result = await db.query(
+            'SELECT * FROM attendance_weeks WHERE student_id = $1 ORDER BY week_number ASC',
+            [studentId]
+        );
+        console.log('Результат SQL-запроса:', result.rows); // Логируем результат
+        return result.rows;
+    } catch (error) {
+        console.error('Ошибка получения данных о посещаемости:', error.message);
+        throw new Error('Не удалось получить данные о посещаемости.');
+    }
+};
+
+export const updateAttendance = async (studentIsic, weekNumber, attended) => {
+    try {
+        const result = await db.query(
+            `
+            INSERT INTO attendance_weeks (student_id, week_number, attended)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (student_id, week_number)
+            DO UPDATE SET attended = $3
+            RETURNING *;
+            `,
+            [studentIsic, weekNumber, attended]
+        );
+        console.log("Данные запроса:", result.rows[0]);
+
+        return result.rows[0]; // Возвращаем обновленные данные
+    } catch (error) {
+        console.error('Ошибка обновления данных о посещаемости:', error.message);
+        throw new Error('Не удалось обновить данные о посещаемости.');
+    }
+};
+
+
+
 
 
 

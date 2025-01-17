@@ -7,13 +7,15 @@ import {
     addPair,
     deletePair,
     deleteAllStudents,
-    updateStudentPresence, deleteStudent, updateUserByCvikId
+    updateStudentPresence, deleteStudent, updateUserByCvikId, updateAttendanceByStudentId, updateAttendance
 } from "../api";
 import AddStudentForm from "../components/AddStudentForm.jsx";
 import CvikyForm from "../components/CvikyForm.jsx";
+import RaspberrySettings from "../components/RaspberrySettings";
 
 
 const IoTPage = () => {
+    const [attendance, setAttendance] = useState({});
     const [settingsRaspberry, setSettingsRaspberry] = useState(false);
     const [hoveredCourse, setHoveredCourse] = useState(null);
     const [isModalOpenCviko, setIsModalOpenCviko] = useState(false);
@@ -22,6 +24,71 @@ const IoTPage = () => {
     const [students, setStudents] = useState([]); // Студенты (загрузка с сервера)
     const [selectedTimeSlot, setSelectedTimeSlot] = useState(null);
     const [selectedStudent, setSelectedStudent] = useState(null);
+
+    const handleToggleAttendance = async (studentIsic, weekNumber, attended) => {
+        try {
+            await updateAttendance(studentIsic, weekNumber, attended); // Обновляем на сервере
+
+            // Обновляем локальное состояние
+            setAttendance((prev) => ({
+                ...prev,
+                [studentIsic]: prev[studentIsic].map((week) =>
+                    week.week_number === weekNumber
+                        ? { ...week, attended }
+                        : week
+                ),
+            }));
+        } catch (error) {
+            console.error("Ошибка обновления посещаемости:", error.message);
+        }
+    };
+
+
+    const fetchAttendance = async (isic) => {
+        try {
+            console.log('Идентификатор студента для API:', isic);
+            const response = await updateAttendanceByStudentId(isic);
+            console.log('Response:', response.data);
+            return response.data; // Массив с посещаемостью по неделям
+        } catch (error) {
+            console.error('Ошибка получения данных о посещаемости:', error.message);
+        }
+    };
+
+    useEffect(() => {
+        const loadAttendanceData = async () => {
+            if (!students || students.length === 0) {
+                console.log('Нет студентов для загрузки посещаемости');
+                return;
+            }
+
+            const attendanceData = {};
+            for (const student of students) {
+                console.log(`Загрузка посещаемости для студента: ${student.isic}`);
+                const studentAttendance = await fetchAttendance(student.isic);
+                console.log(`Данные для студента ${student.id}:`, studentAttendance);
+                attendanceData[student.isic] = studentAttendance;
+            }
+            console.log('Все данные о посещаемости:', attendanceData);
+            setAttendance(attendanceData);
+        };
+
+        loadAttendanceData();
+    }, [students]);
+
+
+
+
+    const handleSubmitRaspberrySettings = async (config) => {
+        try {
+            const response = await axios.post("http://localhost:3000/raspberry-config", config);
+            alert("Конфигурация успешно отправлена!");
+            console.log("Отправленная конфигурация:", config);
+        } catch (error) {
+            console.error("Ошибка при отправке конфигурации:", error);
+            alert("Не удалось отправить конфигурацию.");
+        }
+    };
 
     const fetchStudents = async (cvikyId) => {
         try {
@@ -52,7 +119,7 @@ const IoTPage = () => {
         const intervalId = setInterval(() => {
             console.log(`Пинг для обновления студентов пары с ID: ${selectedTimeSlot.id}`);
             fetchStudents(selectedTimeSlot.id);
-        }, 5000);
+        }, 10000);
 
         return () => clearInterval(intervalId); // Очищаем интервал при размонтировании компонента или изменении выбранной пары
     }, [selectedTimeSlot]);
@@ -80,14 +147,37 @@ const IoTPage = () => {
     };
 
     const handleAddCviky = async (cvikyData) => {
+        if (!cvikyData || !cvikyData.day_name || !cvikyData.time_start || !cvikyData.time_end) {
+            alert("Prosim, vyplňte všetky polia pre pridanie cvičenia!");
+            return;
+        }
+
         try {
-            await addPair(cvikyData); // Отправка данных на сервер
-            const updatedCourses = await getCviky(); // Обновление списка пар
-            setCourses(updatedCourses);
+            // Добавляем новую пару через API
+            await addPair({
+                day_name: cvikyData.day_name,
+                time_start: cvikyData.time_start,
+                time_end: cvikyData.time_end,
+            });
+
+            // Загружаем обновленные данные с сервера
+            const loadedCourses = await getCviky();
+            const formattedCourses = loadedCourses.map((course) => ({
+                id: course.id,
+                name: `${course.day_name}: ${course.time_start} - ${course.time_end}`,
+                timeSlots: [`${course.day_name}: ${course.time_start} - ${course.time_end}`],
+            }));
+
+            // Обновляем состояние курсов
+            setCourses(formattedCourses);
+
+            console.log("Cvičenie úspešne pridané.");
         } catch (error) {
             console.error("Chyba pridania cvika:", error.message);
+            alert("Nepodarilo sa pridať cvičenie. Skúste to znova.");
         }
     };
+
     const handleDeleteCourse = async (courseId) => {
         if (window.confirm("Действительно хотите удалить пару из списка?")) {
             try {
@@ -233,6 +323,12 @@ const IoTPage = () => {
                     Nastavenia Raspberry Pi
                 </button>
             </div>
+            {settingsRaspberry && (
+                <RaspberrySettings
+                    onClose={() => setSettingsRaspberry(false)}
+                    onSubmit={handleSubmitRaspberrySettings}
+                />
+            )}
 
             {/* Модальное окно для добавления студента */}
             {isModalOpen && (
@@ -350,34 +446,89 @@ const IoTPage = () => {
                             Pridať študenta
                         </button>
                     </div>
-                        <ul style={{listStyle: "none", padding: 0}}>
-                            {students?.filter((student) => student.cviky_id === selectedTimeSlot.id)
-                                .map((student) => (
-                                    <li
-                                        key={student.id}
-                                        style={{
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            alignItems: "center",
-                                            padding: "12px",
-                                            marginBottom: "8px",
-                                            backgroundColor: "#f8f9fa",
-                                            borderRadius: "8px",
-                                            boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
-                                        }}
-                                    >
-                                        <div style={{display: "flex", alignItems: "center", gap: "12px"}}>
-                                            <div
-                                                style={{
-                                                    width: "16px",
-                                                    height: "16px",
-                                                    borderRadius: "50%",
-                                                    backgroundColor: student.present ? "#4caf50" : "#f44336",
-                                                }}
-                                            ></div>
-                                            <span>{student.name}</span>
-                                        </div>
-                                        {/* Иконка шестеренки */}
+                    <ul style={{listStyle: "none", padding: 0}}>
+                        {students
+                            ?.filter((student) => student.cviky_id === selectedTimeSlot.id)
+                            .map((student) => (
+                                <li
+                                    key={student.id}
+                                    style={{
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                        padding: "12px",
+                                        marginBottom: "8px",
+                                        backgroundColor: "#f8f9fa",
+                                        borderRadius: "8px",
+                                        boxShadow: "0 2px 4px rgba(0, 0, 0, 0.1)",
+                                    }}
+                                >
+                                    {/* Левая часть: Имя студента */}
+                                    <div style={{display: "flex", alignItems: "center", gap: "12px"}}>
+                                        <div
+                                            style={{
+                                                width: "16px",
+                                                height: "16px",
+                                                borderRadius: "50%",
+                                                backgroundColor: student.present ? "#4caf50" : "#f44336",
+                                            }}
+                                        ></div>
+                                        <span>{student.name}</span>
+                                    </div>
+
+                                    {/* Правая часть: Недельная посещаемость */}
+                                    <div style={{display: "flex", gap: "13px"}}>
+                                        {Array(13)
+                                            .fill(null)
+                                            .map((_, weekIndex) => {
+                                                const weekData = attendance[student.isic]?.find(
+                                                    (week) => week.week_number === weekIndex + 1
+                                                );
+                                                const attended = weekData?.attended || false;
+
+                                                return (
+                                                    <div
+                                                        key={weekIndex}
+                                                        onClick={() =>
+                                                            handleToggleAttendance(student.isic, weekIndex + 1, !attended)
+                                                        } // Обработчик клика
+                                                        style={{
+                                                            display: "flex",
+                                                            flexDirection: "column",
+                                                            alignItems: "center",
+                                                            minWidth: "30px",
+                                                            cursor: "pointer", // Указываем, что элемент кликабельный
+                                                        }}
+                                                    >
+                                                        {/* Номер недели */}
+                                                        <span
+                                                            style={{
+                                                                fontSize: "16px",
+                                                                fontWeight: "bold",
+                                                                marginBottom: "4px",
+                                                                color: "#555",
+                                                            }}
+                                                        >
+                    {weekIndex + 1}
+                  </span>
+
+                                                        {/* Метка "U" или "N" */}
+                                                        <span
+                                                            style={{
+                                                                fontSize: "24px",
+                                                                fontWeight: "bold",
+                                                                color: attended ? "#4caf50" : "#f44336", // Цвет метки
+                                                            }}
+                                                        >
+                    {attended ? "U" : "N"}
+                  </span>
+                                                    </div>
+                                                );
+                                            })}
+                                    </div>
+
+                                    {/* Кнопка настроек */}
+                                    <div>
                                         <button
                                             onClick={() => setSelectedStudent(student)}
                                             style={{
@@ -402,44 +553,48 @@ const IoTPage = () => {
                                             >
                                                 <circle cx="12" cy="12" r="3"></circle>
                                                 <path
-                                                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2v-1a2 2 0 0 1 2-2h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2h1a2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+                                                ></path>
                                             </svg>
                                         </button>
-                                    </li>
-                                ))}
-                        </ul>
-                        <div
+                                    </div>
+                                </li>
+                            ))}
+                    </ul>
+
+
+                    <div
+                        style={{
+                            display: "flex",
+                            justifyContent: "flex-end",
+                            marginTop: "16px",
+                        }}
+                    >
+                        <button
+                            onClick={() => {
+                                if (
+                                    confirm(
+                                        `Вы уверены, что хотите удалить всех студентов для пары "${selectedTimeSlot.name}"?`
+                                    )
+                                ) {
+                                    handleDeleteAllStudents(selectedTimeSlot.id);
+                                }
+                            }}
                             style={{
-                                display: "flex",
-                                justifyContent: "flex-end",
-                                marginTop: "16px",
+                                padding: "10px 20px",
+                                backgroundColor: "#f44336",
+                                color: "white",
+                                border: "none",
+                                borderRadius: "8px",
+                                cursor: "pointer",
                             }}
                         >
-                            <button
-                                onClick={() => {
-                                    if (
-                                        confirm(
-                                            `Вы уверены, что хотите удалить всех студентов для пары "${selectedTimeSlot.name}"?`
-                                        )
-                                    ) {
-                                        handleDeleteAllStudents(selectedTimeSlot.id);
-                                    }
-                                }}
-                                style={{
-                                    padding: "10px 20px",
-                                    backgroundColor: "#f44336",
-                                    color: "white",
-                                    border: "none",
-                                    borderRadius: "8px",
-                                    cursor: "pointer",
-                                }}
-                            >
-                                Vymazať zoznam
-                            </button>
-                        </div>
+                            Vymazať zoznam
+                        </button>
                     </div>
-                    )}
-                <StudentSettings
+                </div>
+            )}
+            <StudentSettings
                 student={selectedStudent}
                 onClose={() => setSelectedStudent(null)}
                 onDelete={handleDeleteStudent}
@@ -461,7 +616,7 @@ const IoTPage = () => {
                     }
                 }}
             />
-                </div>
+        </div>
     );
 }
 export default IoTPage;

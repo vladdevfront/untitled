@@ -5,7 +5,7 @@ import {
     addStudent,
     deleteStudent,
     updateStudentPresence,
-    deleteAllStudents, updatedStudents,
+    deleteAllStudents, updatedStudents, getAttendanceByStudentId, updateAttendance,
 } from './services/StudentsService.js';
 import cors from "cors";
 import bodyParser from 'body-parser';
@@ -177,6 +177,30 @@ app.get('/students/cviky/:cvikyId', async (req, res) => {
     } catch (error) {
         console.error('Ошибка получения студентов для пары:', error.message);
         res.status(500).send('Ошибка сервера');
+    }
+});
+
+app.get('/attendance/:studentId', async (req, res) => {
+    const { studentId } = req.params;
+
+    try {
+        const attendance = await getAttendanceByStudentId(studentId);
+
+        res.status(200).json(attendance);
+    } catch (error) {
+        console.error('Ошибка получения данных о посещаемости:', error.message);
+        res.status(500).send('Ошибка сервера');
+    }
+});
+
+app.put('/attendance', async (req, res) => {
+    const { studentIsic, weekNumber, attended } = req.body;
+    try {
+        const updatedAttendance = await updateAttendance(studentIsic, weekNumber, attended);
+        res.status(200).json(updatedAttendance);
+    } catch (error) {
+        console.error('Ошибка обновления посещаемости:', error.message);
+        res.status(500).json({ error: 'Не удалось обновить данные о посещаемости.' });
     }
 });
 

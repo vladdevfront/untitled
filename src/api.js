@@ -57,3 +57,16 @@ export const findByUserByLogin = async (login, password, role_server) => {
 export const updateUserByCvikId = async (cvikyId) => {
     return await axios.get(`${API_URL}/students/cviky/${cvikyId}`);
 }
+
+export const updateAttendanceByStudentId = async (isic) => {
+    return await axios.get(`${API_URL}/attendance/${isic}`);
+}
+
+export const updateAttendance = async (studentIsic, weekNumber, attended) => {
+    const response = await axios.put(`${API_URL}/attendance`, {
+        studentIsic,
+        weekNumber,
+        attended,
+    });
+    return response.data; // Обновленные данные о посещаемости
+};
