@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
-import Sidebar from "./components/Sidebar";
-import HomePage from "./pages/Home";
-import IoTPage from "./pages/IoT";
+import Sidebar from "./components/Sidebar.jsx";
+import HomePage from "./pages/Home.jsx";
+import IoTPage from "./pages/IoT.jsx";
 import AuthForm from "./pages/AuthForm.jsx";
 
 const App = () => {
