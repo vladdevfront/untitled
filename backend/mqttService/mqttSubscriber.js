@@ -58,8 +58,7 @@ client.on('message', async (topic, message) => {
                     FROM cviky
                     WHERE id = $1
                       AND trim(day_name) = trim(to_char($2::timestamp, 'Day'))
-                      AND $2::time BETWEEN (time_start - interval '' ||
-                       '5 minutes')
+                      AND $2::time BETWEEN (time_start - interval '5 minutes')
                                        AND (time_start + interval '30 minutes');
                 `;
 
@@ -83,8 +82,8 @@ client.on('message', async (topic, message) => {
                     if (updateResult.rowCount > 0) {
                         console.log(`✅ Присутствие обновлено: ${JSON.stringify(updateResult.rows[0], null, 2)}`);
 
-                        // Обновляем текущую неделю в attendance_weeks
-                        const semesterStartDate = new Date('2025-01-08T00:00:00Z'); // Дата начала семестра
+
+                        const semesterStartDate = new Date('2025-01-03T00:00:00Z'); // Дата начала семестра
 
                         const currentWeek = Math.ceil(
                             (new Date(dt).getTime() - semesterStartDate.getTime()) / (1000 * 60 * 60 * 24 * 7)

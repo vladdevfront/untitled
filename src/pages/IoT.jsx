@@ -8,7 +8,7 @@ import {
     deletePair,
     deleteAllStudents,
     updateStudentPresence, deleteStudent, updateUserByCvikId, updateAttendanceByStudentId, updateAttendance
-} from "../api";
+} from "../api.js";
 import AddStudentForm from "../components/AddStudentForm.jsx";
 import CvikyForm from "../components/CvikyForm.jsx";
 import RaspberrySettings from "../components/RaspberrySettings";
